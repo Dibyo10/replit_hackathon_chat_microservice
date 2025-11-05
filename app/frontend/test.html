@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>API Spec Generator Test UI</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #fafafa;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        textarea,
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 16px;
+            cursor: pointer;
+            margin-right: 6px;
+        }
+
+        #chatBox {
+            background: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+
+        pre {
+            background: #262626;
+            color: #eee;
+            padding: 10px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .label {
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>API Spec Generator Test Client</h2>
+
+        <div>
+            <span class="label">Session ID</span>
+            <input id="sessionId" value="test-session-1" />
+        </div>
+
+        <div id="chatBox"></div>
+
+        <textarea id="message" placeholder="Type a message... (type GENERATE or click button)"></textarea>
+
+        <button onclick="sendMessage()">Send</button>
+        <button onclick="generateFiles()">Summarise convo and generate</button>
+
+        <h3>Generated Files</h3>
+
+        <p><b>openapi.yaml</b></p>
+        <pre id="openapi"></pre>
+
+        <p><b>rules.md</b></p>
+        <pre id="rules"></pre>
+
+        <p><b>schema.json</b></p>
+        <pre id="schema"></pre>
+    </div>
+
+    <script>
+        const BASE_URL = "http://localhost:8000/api";
+
+        function addToChat(role, text) {
+            const chat = document.getElementById("chatBox");
+            chat.textContent += `\n${role}: ${text}`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const sessionId = document.getElementById("sessionId").value;
+            const msg = document.getElementById("message").value.trim();
+            if (!msg) return;
+
+            addToChat("User", msg);
+
+            const res = await fetch(`${BASE_URL}/chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId, message: msg })
+            });
+
+            const data = await res.json();
+
+            addToChat("Bot", data.response);
+            document.getElementById("message").value = "";
+
+            if (msg.toUpperCase().includes("GENERATE") || data.should_generate) {
+                generateFiles();
+            }
+        }
+
+        async function generateFiles() {
+            const sessionId = document.getElementById("sessionId").value;
+
+            addToChat("System", "⏳ Generating API files...");
+
+            const res = await fetch(`${BASE_URL}/generate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+
+            const data = await res.json();
+
+            document.getElementById("openapi").textContent = data.openapi_yaml || "";
+            document.getElementById("rules").textContent = data.rules_md || "";
+            document.getElementById("schema").textContent = data.json_schema || "";
+
+            addToChat("System", "✅ Files generated below");
+        }
+    </script>
+</body>
+
+</html>

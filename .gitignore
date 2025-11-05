@@ -1,2 +1,8 @@
 .env
 /replitvenv
+/test
+/frontend
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

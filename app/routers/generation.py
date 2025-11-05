@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import GenerateRequest, GeneratedFiles, ApprovalRequest
 from app.services.session_manager import get_session
-from app.services.gemini_service import init_gemini
+
 from app.utils.parser import parse_generated_files
+from app.services.gemini_service import init_generate_model
+
 
 router = APIRouter()
 
@@ -12,7 +14,7 @@ async def generate(req: GenerateRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    model = init_gemini(req.api_key)
+    model = init_generate_model()
 
     transcript = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in session["history"]])
 
