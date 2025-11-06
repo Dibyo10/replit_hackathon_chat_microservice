@@ -25,6 +25,11 @@ async def stream_chat(req: ChatRequest):
 
         add_message(req.session_id, "user", req.message)
 
+        if "GENERATE" in req.message.upper():
+          def control_signal():
+            yield "Ready to generate. Call /api/generate\n[STREAM_END]\n"
+          return StreamingResponse(control_signal(), media_type="text/plain")
+
         def token_generator():
             for token in send_chat_stream(model, session["history"][:-1], req.message):
                 yield token

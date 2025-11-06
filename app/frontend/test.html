@@ -86,79 +86,85 @@
         <pre id="schema"></pre>
     </div>
 
-    <script>
-        const BASE_URL = "http://localhost:8000/api";
+<script>
+    const BASE_URL = "http://localhost:8000/api";
 
-        function addToChat(role, text) {
-            const chat = document.getElementById("chatBox");
-            chat.textContent += `\n${role}: ${text}`;
-            chat.scrollTop = chat.scrollHeight;
+    function addToChat(role, text) {
+        const chat = document.getElementById("chatBox");
+        chat.textContent += `\n${role}: ${text}`;
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function streamChat() {
+        const sessionId = document.getElementById("sessionId").value;
+        const msg = document.getElementById("message").value.trim();
+        if (!msg) return;
+
+        const chatBox = document.getElementById("chatBox");
+        chatBox.textContent += `\nUser: ${msg}\n`;
+        document.getElementById("message").value = "";
+
+        const response = await fetch(`${BASE_URL}/chat/stream`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId, message: msg })
+        });
+
+        if (!response.ok) {
+            chatBox.textContent += `\n[Error ${response.status}] Could not start stream.\n`;
+            return;
         }
 
-        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let streamedText = "";
 
-        async function streamChat() {
-                const sessionId = document.getElementById("sessionId").value;
-                const msg = document.getElementById("message").value.trim();
-                if (!msg) return;
+        chatBox.textContent += "Bot: ";
 
-                const chatBox = document.getElementById("chatBox");
-                chatBox.textContent += `\nUser: ${msg}\n`;
-                document.getElementById("message").value = "";
-
-                const response = await fetch(`${BASE_URL}/chat/stream`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ session_id: sessionId, message: msg })
-                });
-
-                if (!response.ok) {
-                    chatBox.textContent += `\n[Error ${response.status}] Could not start stream.\n`;
-                    return;
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                chatBox.textContent += "Bot: ";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value);
-                    chatBox.textContent += chunk;
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }
-
-                chatBox.textContent += "\n[STREAM_END]\n";
-            }
-
-        
-
-
-
-
-
-        async function generateFiles() {
-            const sessionId = document.getElementById("sessionId").value;
-
-            addToChat("System", "⏳ Generating API files...");
-
-            const res = await fetch(`${BASE_URL}/generate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_id: sessionId })
-            });
-
-            const data = await res.json();
-
-            document.getElementById("openapi").textContent = data.openapi_yaml || "";
-            document.getElementById("rules").textContent = data.rules_md || "";
-            document.getElementById("schema").textContent = data.json_schema || "";
-
-            addToChat("System", "✅ Files generated below");
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value);
+            streamedText += chunk;
+            chatBox.textContent += chunk;
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
-    </script>
+
+        chatBox.textContent += "\n[STREAM_END]\n";
+
+        // ✅ If the bot said "Ready to generate", auto-trigger generation
+        if (streamedText.includes("Ready to generate")) {
+            console.log("⚙️ Triggering generation automatically...");
+            await generateFiles();
+        }
+    }
+
+    async function generateFiles() {
+        const sessionId = document.getElementById("sessionId").value;
+
+        addToChat("System", "⏳ Generating API files...");
+
+        const res = await fetch(`${BASE_URL}/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+
+        if (!res.ok) {
+            addToChat("System", `❌ Generation failed: ${res.status}`);
+            return;
+        }
+
+        const data = await res.json();
+
+        document.getElementById("openapi").textContent = data.openapi_yaml || "";
+        document.getElementById("rules").textContent = data.rules_md || "";
+        document.getElementById("schema").textContent = data.schema_json || "";
+
+        addToChat("System", "✅ Files generated below");
+    }
+</script>
+
 </body>
 
 </html>

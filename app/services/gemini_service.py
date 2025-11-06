@@ -46,7 +46,7 @@ def send_chat_stream(model, history, message):
 def send_generation(model, history):
 
     try:
-        prompt = "\n".join([f"{m['role']}: {m['content']}" for m in history])
+        prompt = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in history])
         response = model.generate_content(prompt)
         return response.text if hasattr(response, "text") and response.text else str(response)
     except Exception as e:
