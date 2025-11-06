@@ -11,6 +11,7 @@ def init_session(session_id: str):
         "awaiting_approval": False
     }
 
+
 def add_message(session_id: str, role: str, content: str):
     sessions[session_id]["history"].append({
         "role": role,
