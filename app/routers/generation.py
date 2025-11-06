@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
 from app.models.schemas import GenerateRequest, GeneratedFiles
-from app.services.session_manager import get_session
+from app.services.session_manager import get_session, save_generated_files
 from app.services.gemini_service import init_generate_model
 from app.utils.parser import parse_generated_files
-
 
 router = APIRouter()
 
@@ -22,10 +21,10 @@ async def generate(req: GenerateRequest):
 
         model = init_generate_model()
 
-       
+        
         transcript = "\n".join([
             f"{m['role']}: {m['parts'][0]['text']}"
-            for m in session["history"]
+            for m in session.get("history", [])
             if m.get("parts") and isinstance(m["parts"], list) and "text" in m["parts"][0]
         ])
 
@@ -56,8 +55,8 @@ Generate the following three files in exactly this format:
 
         files = parse_generated_files(resp.text)
 
+        # Handle incomplete or invalid model output gracefully
         if not files:
-            
             print("⚠️ parse_generated_files failed, raw snippet:", resp.text[:500])
             return GeneratedFiles(
                 openapi_yaml="",
@@ -66,8 +65,7 @@ Generate the following three files in exactly this format:
             )
 
         
-        session["generated_files"] = files
-        session["awaiting_approval"] = True
+        save_generated_files(req.session_id, files)
 
         return GeneratedFiles(**files)
 
