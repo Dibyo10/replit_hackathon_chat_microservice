@@ -69,7 +69,7 @@
 
         <textarea id="message" placeholder="Type a message... (type GENERATE or click button)"></textarea>
 
-        <button onclick="sendMessage()">Send</button>
+        
         <button onclick="generateFiles()">Summarise convo and generate</button>
         <button onclick="streamChat()">Stream Chat</button>
 
@@ -95,28 +95,7 @@
             chat.scrollTop = chat.scrollHeight;
         }
 
-        async function sendMessage() {
-            const sessionId = document.getElementById("sessionId").value;
-            const msg = document.getElementById("message").value.trim();
-            if (!msg) return;
-
-            addToChat("User", msg);
-
-            const res = await fetch(`${BASE_URL}/chat`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_id: sessionId, message: msg })
-            });
-
-            const data = await res.json();
-
-            addToChat("Bot", data.response);
-            document.getElementById("message").value = "";
-
-            if (msg.toUpperCase().includes("GENERATE") || data.should_generate) {
-                generateFiles();
-            }
-        }
+        
 
         async function streamChat() {
                 const sessionId = document.getElementById("sessionId").value;
